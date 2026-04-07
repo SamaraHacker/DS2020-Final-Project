@@ -1,0 +1,19 @@
+---
+title: "Research topic"
+output: html_document
+---
+
+# DS2020: Final Project
+
+Members: Samara Feldhacker (samara28), Alina Kirkpatrick (alinayjk)
+
+### Data Desccription
+
+- What dataset you are using (include a link if applicable)
+- Initial data cleaning steps you anticipate
+- Basic/marginal summaries you have explored or plan to explore
+
+
+### Project idea / research questions:
+- What are you trying to investigate?
+- What analyses or visualizations do you expect to use?
