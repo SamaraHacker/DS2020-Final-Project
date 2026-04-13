@@ -9,20 +9,60 @@ Members: Samara Feldhacker (samara28), Alina Kirkpatrick (alinayjk)
 
 ### Data Desccription
 
-- What dataset you are using (include a link if applicable)
+-   What dataset you are using (include a link if applicable)
 
-Multiple online race results for specifically the Iowa Trail Run Series during 2025. These are all downloadable as CSV file and contain all participant results along with a few other aspects corresponding to the partcipants. We may also combine other datasets, like weather data, where needed.
+Multiple online race results for specifically the Iowa Trail Run Series during 2025. Some of these are downloadable as CSV file or XLS file and contain all participant results along with a few other aspects corresponding to the participants. But others do not have a downloadable link, so the data will have to be scraped. We may also combine other datasets, like weather data, where needed.
 
-- Initial data cleaning steps you anticipate
+Here are the links to the data sets:
 
-Current the CSV file contains information on Pos,Race No,Name,Time,Category,Cat Pos,Gender,Gen Pos,City,State,Pace,Start,Finish,Pace. But all of this data is within the first cell of the CSV and are not separated, so we will need to separate the data to become more usable for further analysis.
+[Center Trails](https://results.truetimeracing.com/results.aspx?CId=16535&RId=1441)
 
-- Basic/marginal summaries you have explored or plan to explore
+[Sugar Bottom Trail Run](https://results.truetimeracing.com/results.aspx?CId=16535&RId=1446)
+
+[Ledges Trail Run](https://results.truetimeracing.com/results.aspx?CId=16535&RId=1478)
+
+[A Midsummer Night's Run](https://results.truetimeracing.com/results.aspx?CId=16535&RId=1492)
+
+[Yellow River State Forest](https://results.truetimeracing.com/results.aspx?CId=16535&RId=1575)
+
+[Lake Macbride](https://results.truetimeracing.com/results.aspx?CId=16535&RId=1593)
+
+[Annett Nature Center](https://results.truetimeracing.com/results.aspx?CId=16535&RId=1546)
+
+[Jester Park](https://results.truetimeracing.com/results.aspx?CId=16535&RId=1582)
+
+Additionally, within these links there are results for different race distances.
+
+-   Initial data cleaning steps you anticipate
+
+Current the CSV file contains information on Pos,Race No,Name,Time,Category,Cat Pos,Gender,Gen Pos,City,State,Pace,Start,Finish,Pace. But all of this data is within the first cell of the CSV and are not separated, so we will need to separate the data to become more usable for further analysis. In addition Name is stored as one variable, so it may be usable to separate those variables. Similarly with the pace statistic, where it includes min/m, which is not needed information. There is also some capitalization for the city and state that would need to be fixed.
+
+In addition, for several other races there is no download link, so the data will have to be scraped and any not needed information, like sharable links, would have to be removed.
+
+-   Basic/marginal summaries you have explored or plan to explore
 
 Basic summaries would be the number of people that participated within the event, then the number of people that participated within each specific event. After that the average age of the participants, the number of people in Male and Female, the average pace, etc.
 
-
 ### Project idea / research questions:
-- What are you trying to investigate?
 
-- What analyses or visualizations do you expect to use?
+-   What are you trying to investigate?
+
+Some questions that we are looking to answer include:
+
+1) Which cities/regions are most represented, and do runners from closer locations perform differently than those who travel farther?
+
+2) How does age group affect pace, and does that relationship change across different race distances?
+
+3) TODO
+
+4) TODO
+
+-   What analyses or visualizations do you expect to use?
+
+1) Bar chart to show the most common cities by participant count. Potentially a dot map of the midwest area (since most participants are located in/around Iowa) showcasing where people live at the where the race is located at. Then the distance between the hometown of the participant would need to be calculated and then plotted, likely with a scatterplot, with the pace or finishing time of the runner.
+
+2) At minimum a scatter plot or a box plot of the age group of the participant (or their age) with their pace, and likely facet by the distance. I think a heat map could be cool to do as well. I do also think brining elevation into this question could also be interesting.
+
+3) TODO
+
+4) TODO
