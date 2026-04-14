@@ -49,20 +49,20 @@ Basic summaries would be the number of people that participated within the event
 
 Some questions that we are looking to answer include:
 
-1) Which cities/regions are most represented, and do runners from closer locations perform differently than those who travel farther?
+1)  Which cities/regions are most represented, and do runners from closer locations perform differently than those who travel farther?
 
-2) How does age group affect pace, and does that relationship change across different race distances?
+2)  How does age group affect pace, and does that relationship change across different race distances?
 
-3) TODO
+3)  How does the performance gap between male and female athletes (measured by fastest race times) vary across age categories?
 
-4) TODO
+4)  Is there significant a relationship between race distance and the number of participants in running events?
 
 -   What analyses or visualizations do you expect to use?
 
-1) Bar chart to show the most common cities by participant count. Potentially a dot map of the midwest area (since most participants are located in/around Iowa) showcasing where people live at the where the race is located at. Then the distance between the hometown of the participant would need to be calculated and then plotted, likely with a scatterplot, with the pace or finishing time of the runner.
+1)  Bar chart to show the most common cities by participant count. Potentially a dot map of the midwest area (since most participants are located in/around Iowa) showcasing where people live at the where the race is located at. Then the distance between the hometown of the participant would need to be calculated and then plotted, likely with a scatterplot, with the pace or finishing time of the runner.
 
-2) At minimum a scatter plot or a box plot of the age group of the participant (or their age) with their pace, and likely facet by the distance. I think a heat map could be cool to do as well. I do also think brining elevation into this question could also be interesting.
+2)  At minimum a scatter plot or a box plot of the age group of the participant (or their age) with their pace, and likely facet by the distance. I think a heat map could be cool to do as well. I do also think brining elevation into this question could also be interesting.
 
-3) TODO
+3)  A grouped bar chart would best represent this data, with age groups on the x-axis and race times on the y-axis. Male and female athletes would be shown as separate colored bars within each age group to allow for comparison between genders.
 
-4) TODO
+4)  A scatterplot would be the best choice for showing the relationship between race distance and number of participants. race distance will be the x-axis with the y-axis being number of participants. A line of best fit would also be useful to ad as it can show more clearly if there is a significant relationship based on the slope.
