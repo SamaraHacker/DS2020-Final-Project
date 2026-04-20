@@ -1,0 +1,198 @@
+---
+title: "Final-Project"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(tidyverse)
+library(rvest)
+```
+
+# DS2020: Final Project
+
+Members: Samara Feldhacker (samara28), Alina Kirkpatrick (alinayjk)
+
+### Data Gathering
+
+In order to gather the data from online resources, I created functions that would take the base url and gather all of the information from the website that was needed. (More text yapping)
+
+Creating functions:
+
+```{r}
+base_address <- "https://results.truetimeracing.com/"
+
+get_distance <- function(race_name) {
+  if(race_name == "4 Mile Run") {
+    return(4.0)
+  }
+  if(race_name == "8 Mile Run") {
+    return(8.0)
+  }
+  if (race_name == "Half Marathon") {
+    return(13.1)
+  }
+  if (race_name == "10k Run") {
+    return(6.2)
+  }
+  if (race_name == "5k Run") {
+    return(3.1)
+  }
+  return(0.0)
+}
+
+information_scrapper <- function(url) {
+  #First open the base url
+  site <- read_html(url)
+  
+  #First gather all of the races
+  race_links <- site %>% html_elements("#ctl00_Content_Main_divEvents .nav-link") %>% html_attr(name="href")
+  race_names <- site %>% html_elements("#ctl00_Content_Main_divEvents .nav-link") %>% html_text()
+  
+  #Get the other page links for that race
+  page_links <- site %>% html_elements("#ctl00_Content_Main_grdTopPager a") %>% html_attr(name="href")
+  
+  #Get the first table
+  tables <- site %>% html_table(fill=TRUE)
+  data <- tables[[2]]
+  colnames(data) <- data[1,]
+  data <- data[-1,]
+  
+  #If there is not distance in col names
+  if(!("Dist" %in% names(data))) {
+    #Create a new column called distance
+    data$Dist <- get_distance(race_names[[1]])
+  }
+  
+  first_iteration = 1
+  
+  #Iterate through all of the races
+  for(race in race_links) {
+    i <- 1
+    if(!first_iteration) {
+      #Read that specific race page
+      url <- paste(base_address, race, sep="")
+      html <- read_html(url)
+      
+      #Get the other page links for that race
+      page_links <- html %>% html_elements("#ctl00_Content_Main_grdTopPager a") %>% html_attr(name="href")
+      
+      #Get the first table
+      tables <- html %>% html_table(fill=TRUE)
+      
+      data1 <- tryCatch(tables[[2]], error = function(e) NULL)
+      
+      if(is.null(data1)) {
+        data <- data[, !duplicated(colnames(data))]
+        data <- data |>
+          filter(Pos != "") |>
+          select(-any_of(c("Fav", "Share", "Cat Pos(Gen Pos)")))
+        return(data)
+      }
+      
+      colnames(data1) <- data1[1,]
+      data1 <- data1[-1,]
+      #If there is not distance in col names
+      if(!("Dist" %in% names(data1))) {
+        #Create a new column called distance
+        data1$Dist <- get_distance(race)
+      }
+      
+      #Only rbind with common columns
+      common <- intersect(colnames(data), colnames(data1))
+      data <- rbind(data[common], data1[common])
+    }
+    #Iterate through the links in the race
+    for(link in page_links) {
+      if(!is.na(link)) {
+        url2 <- paste(base_address, link, sep="")
+        html2 <- read_html(url2)
+        
+        tables2 <- html2 %>% html_table(fill=TRUE)
+        data2 <- tables2[[2]]
+        colnames(data2) <- data2[1,]
+        data2 <- data2[-1,]
+        
+        #If there is not distance in col names
+        if(!("Dist" %in% names(data2))) {
+          #Create a new column called distance
+          data2$Dist <- get_distance(race_names[[i]])
+        }
+        
+        #Only rbind with common columns
+        common <- intersect(colnames(data), colnames(data2))
+        data <- rbind(data[common], data2[common])
+      }
+    }
+    first_iteration <- 0
+    i <- i+1
+  }
+  
+  #Filter not needed columns
+  data <- data[, !duplicated(colnames(data))]
+  
+  # Only include all ones where the person finished
+  data <- data |>
+    filter(Pos != "") |>
+    select(!c("Fav", "Share", "Cat Pos(Gen Pos)"))
+  
+  
+  return(data)
+}
+```
+
+Now I can use these functions in order to gather the tables from the links:
+
+```{r}
+center_trails <- information_scrapper("https://results.truetimeracing.com/results.aspx?CId=16535&RId=1441")
+sugar_trails <- information_scrapper("https://results.truetimeracing.com/results.aspx?CId=16535&RId=1446")
+ledges_trails <- information_scrapper("https://results.truetimeracing.com/results.aspx?CId=16535&RId=1478")
+summer_trails <- information_scrapper("https://results.truetimeracing.com/results.aspx?CId=16535&RId=1492")
+yellow_trails <- information_scrapper("https://results.truetimeracing.com/results.aspx?CId=16535&RId=1575")
+macbride_trails <- information_scrapper("https://results.truetimeracing.com/results.aspx?CId=16535&RId=1593&EId=2")
+annett_trails <- information_scrapper("https://results.truetimeracing.com/results.aspx?CId=16535&RId=1546&EId=1")
+jester_trails <- information_scrapper("https://results.truetimeracing.com/results.aspx?CId=16535&RId=1582")
+```
+
+Combine into one large data set???
+
+...
+
+Issues I had, and the solutions I produced:
+
+...
+
+### Cleaning the data
+
+Add in additional cleaning data if needed
+
+...
+
+
+### Basic summaries
+
+Include basic summaries if needed
+
+...
+
+### Research Questions Solutions
+
+(Questions copied from Final Project Idea)
+
+1)  Which cities/regions are most represented, and do runners from closer locations perform differently than those who travel farther?
+
+...
+
+2)  How does age group affect pace, and does that relationship change across different race distances?
+
+...
+
+3)  How does the performance gap between male and female athletes (measured by fastest race times) vary across age categories?
+
+...
+
+4)  Is there significant a relationship between race distance and the number of participants in running events?
+
+...

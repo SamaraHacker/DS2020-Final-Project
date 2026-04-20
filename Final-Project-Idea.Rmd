@@ -1,9 +1,9 @@
 ---
-title: "Research topic"
+title: "2025 Trail Run Series"
 output: html_document
 ---
 
-# DS2020: Final Project
+# DS2020: Final Project Idea
 
 Members: Samara Feldhacker (samara28), Alina Kirkpatrick (alinayjk)
 
