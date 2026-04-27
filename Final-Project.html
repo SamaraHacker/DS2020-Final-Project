@@ -492,20 +492,145 @@ yellow_trails &lt;- information_scrapper(&quot;https://results.truetimeracing.co
 macbride_trails &lt;- information_scrapper(&quot;https://results.truetimeracing.com/results.aspx?CId=16535&amp;RId=1593&amp;EId=2&quot;)
 annett_trails &lt;- information_scrapper(&quot;https://results.truetimeracing.com/results.aspx?CId=16535&amp;RId=1546&amp;EId=1&quot;)
 jester_trails &lt;- information_scrapper(&quot;https://results.truetimeracing.com/results.aspx?CId=16535&amp;RId=1582&quot;)</code></pre>
-<p>Combine into one large data set???</p>
+<p>These will be the base data sets that will later get cleaned and
+combined to make them easier to work with.</p>
 <p>…</p>
 <p>Issues I had, and the solutions I produced:</p>
 <p>…</p>
 </div>
 <div id="cleaning-the-data" class="section level3">
 <h3>Cleaning the data</h3>
-<p>Add in additional cleaning data if needed</p>
-<p>…</p>
+<p>Now, using the tables produced, I decided to also create one large
+data set containing all of the races during the 2025 year. I am deciding
+to match the large data set with the same number of variables as the
+Center trails and sugar trails data set, but I am choosing to remove
+Race No, Finish (same as time), and Pace (which can be manual calculated
+in a much better format).</p>
+<p>Step 1: Ensure all dataframes have the same number/type of
+variables:</p>
+<pre class="r"><code>#Center and sugar are good
+
+#Ledges is missing City, State, Pace, Start, Finish
+ledges_trails &lt;- ledges_trails |&gt;
+  mutate(City = &quot;&quot;, State = &quot;&quot;, Pace = &quot;&quot;, Start = &quot;&quot;, Finish = &quot;&quot;)
+
+#Summer is missing City, State, Pace
+summer_trails &lt;- summer_trails |&gt;
+  mutate(City = &quot;&quot;, State = &quot;&quot;, Pace = &quot;&quot;)
+
+#Yellow trails is missing city, State
+yellow_trails &lt;- yellow_trails |&gt;
+  mutate(City = &quot;&quot;, State = &quot;&quot;)
+
+#Macbride has extra Age variable
+macbride_trails &lt;- macbride_trails |&gt;
+  select(!c(&quot;Age&quot;))
+
+#Annett is missing city, State, Pace
+annett_trails &lt;- annett_trails |&gt;
+  mutate(City = &quot;&quot;, State = &quot;&quot;, Pace = &quot;&quot;)
+
+#Jester is missing city, State
+jester_trails &lt;- jester_trails |&gt;
+  mutate(City = &quot;&quot;, State = &quot;&quot;)</code></pre>
+<p>Step 2: Clean the individual data sets, because I wanted to use
+another function.</p>
+<pre class="r"><code>data_cleaner &lt;- function(data, trailName) {
+  #Remove Race No, Pace, Finish
+  dataNew &lt;- data |&gt;
+    select(!c(&quot;Race No&quot;, &quot;Pace&quot;, &quot;Finish&quot;))
+  
+  #Turn gender into a factor
+  dataNew$Gender &lt;- factor(dataNew$Gender)
+  
+  #Turn Pos, Cat Pos, Gen pos, and Dist into a numerical variable
+  dataNew$Pos &lt;- as.numeric(dataNew$Pos)
+  dataNew$`Cat Pos` &lt;- as.numeric(dataNew$`Cat Pos`)
+  dataNew$`Gen Pos` &lt;- as.numeric(dataNew$`Gen Pos`)
+  dataNew$Dist &lt;- as.numeric(dataNew$Dist)
+  
+  #convert time, and start time into the time variable type
+  dataNew$Start &lt;- hms(dataNew$Start)
+  dataNew$Time &lt;- hms(dataNew$Time)
+  
+  #Turn category into a factor
+  dataNew$Category &lt;- factor(dataNew$Category)
+  
+  #Turn city and State into a factor - note may need to change later but whatever
+  dataNew$City &lt;- factor(dataNew$City)
+  dataNew$State &lt;- factor(dataNew$State)
+  
+  #Add on column for the trailName, and set as factor
+  dataNew$Trail &lt;- trailName
+  
+  dataNew$Trail &lt;- factor(dataNew$Trail)
+  
+  return(dataNew)
+}</code></pre>
+<pre class="r"><code>center_trails &lt;- data_cleaner(center_trails, &quot;Center&quot;)
+sugar_trails &lt;- data_cleaner(sugar_trails, &quot;Sugar&quot;)
+ledges_trails &lt;- data_cleaner(ledges_trails, &quot;Ledges&quot;)</code></pre>
+<pre><code>## Warning in .parse_hms(..., order = &quot;HMS&quot;, quiet = quiet): Some strings failed
+## to parse</code></pre>
+<pre class="r"><code>summer_trails &lt;- data_cleaner(summer_trails, &quot;Summer&quot;)
+yellow_trails &lt;- data_cleaner(yellow_trails, &quot;Yellow&quot;)
+macbride_trails &lt;- data_cleaner(macbride_trails, &quot;MacBride&quot;)</code></pre>
+<pre><code>## Warning in .parse_hms(..., order = &quot;HMS&quot;, quiet = quiet): Some strings failed
+## to parse</code></pre>
+<pre class="r"><code>annett_trails &lt;- data_cleaner(annett_trails, &quot;Annett&quot;)
+jester_trails &lt;- data_cleaner(jester_trails, &quot;Jester&quot;)</code></pre>
+<pre><code>## Warning in .parse_hms(..., order = &quot;HMS&quot;, quiet = quiet): Some strings failed
+## to parse</code></pre>
+<p>Now, the dataframes will easily combine together into 1</p>
+<pre class="r"><code>trail_races &lt;- rbind(center_trails, sugar_trails, ledges_trails, summer_trails, yellow_trails, macbride_trails, annett_trails, jester_trails)
+
+#Check the levels of Category, and manually rename to make consistent
+levels(trail_races$Category)</code></pre>
+<pre><code>##  [1] &quot;14 &amp; under&quot;      &quot;Ages 20-24&quot;      &quot;Ages 25-29&quot;      &quot;Ages 30-34&quot;     
+##  [5] &quot;Ages 35-39&quot;      &quot;Ages 40-44&quot;      &quot;Ages 45-49&quot;      &quot;Ages 50-54&quot;     
+##  [9] &quot;Ages 55-59&quot;      &quot;Ages 60-64&quot;      &quot;Ages 65-69&quot;      &quot;Overall Winners&quot;
+## [13] &quot;Ages 15-19&quot;      &quot;Unknown&quot;         &quot;15-19&quot;           &quot;20-24&quot;          
+## [17] &quot;25-29&quot;           &quot;30-34&quot;           &quot;35-39&quot;           &quot;40-44&quot;          
+## [21] &quot;45-49&quot;           &quot;50-54&quot;           &quot;55-59&quot;           &quot;60-64&quot;          
+## [25] &quot;65-69&quot;           &quot;70-74&quot;           &quot;70+&quot;</code></pre>
+<pre class="r"><code>levels(trail_races$Category) &lt;- c(&quot;0-14&quot;, &quot;20-24&quot;, &quot;25-29&quot;, &quot;30-34&quot;, &quot;35-39&quot;, &quot;40-44&quot;, &quot;45-49&quot;, &quot;50-54&quot;, &quot;55-59&quot;, &quot;60-64&quot;, &quot;65-69&quot;, &quot;Overall Winners&quot;, &quot;15-19&quot;, &quot;Unkown&quot;, &quot;15-19&quot;, &quot;20-24&quot;, &quot;25-29&quot;, &quot;30-34&quot;, &quot;35-39&quot;, &quot;40-44&quot;, &quot;45-49&quot;, &quot;50-54&quot;, &quot;55-59&quot;, &quot;60-64&quot;, &quot;65-69&quot;, &quot;70-74&quot;, &quot;70+&quot;)</code></pre>
 </div>
 <div id="basic-summaries" class="section level3">
 <h3>Basic summaries</h3>
 <p>Include basic summaries if needed</p>
-<p>…</p>
+<pre class="r"><code>summary(trail_races)</code></pre>
+<pre><code>##       Pos             Name                Time                         
+##  Min.   :  1.00   Length:1669        Min.   :17M 29S                   
+##  1st Qu.: 24.00   Class :character   1st Qu.:37M 49.3200000000002S     
+##  Median : 49.00   Mode  :character   Median :53M 41.1100000000001S     
+##  Mean   : 57.11                      Mean   :1H 7M 43.7139544637507S   
+##  3rd Qu.: 82.00                      3rd Qu.:1H 21M 43.6999999999998S  
+##  Max.   :199.00                      Max.   :4H 26M 25S                
+##                                                                        
+##             Category      Cat Pos          Gender       Gen Pos      
+##  35-39          :282   Min.   : 1.000   Female:779   Min.   :  1.00  
+##  40-44          :263   1st Qu.: 2.000   Male  :890   1st Qu.: 12.00  
+##  30-34          :234   Median : 3.000                Median : 25.00  
+##  25-29          :162   Mean   : 4.189                Mean   : 29.44  
+##  45-49          :154   3rd Qu.: 6.000                3rd Qu.: 42.00  
+##  Overall Winners:101   Max.   :20.000                Max.   :114.00  
+##  (Other)        :473                                                 
+##             City           State         Start                         
+##               :938            :931   Min.   :1S                        
+##  Iowa City    : 65   Iowa     :689   1st Qu.:8H 7M 19.2999999999993S   
+##  Cedar Rapids : 56   Illinois : 17   Median :9H 4M 5.88000000000102S   
+##  Des Moines   : 53   Wisconsin:  7   Mean   :9H 40M 1.86328641801811S  
+##  North Liberty: 30   Nebraska :  5   3rd Qu.:9H 58M 50.9000000000015S  
+##  Ankeny       : 26   Minnesota:  4   Max.   :19H 46M 40S               
+##  (Other)      :501   (Other)  : 16   NA&#39;s   :248                       
+##       Dist            Trail    
+##  Min.   : 0.00   Sugar   :367  
+##  1st Qu.: 3.10   Ledges  :246  
+##  Median : 6.20   Jester  :228  
+##  Mean   : 5.61   Summer  :199  
+##  3rd Qu.: 6.80   MacBride:188  
+##  Max.   :13.10   Center  :184  
+##                  (Other) :257</code></pre>
 </div>
 <div id="research-questions-solutions" class="section level3">
 <h3>Research Questions Solutions</h3>

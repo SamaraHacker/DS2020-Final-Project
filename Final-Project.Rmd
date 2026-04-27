@@ -9,6 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(dplyr)
 library(tidyverse)
 library(rvest)
+library(lubridate)
 ```
 
 # DS2020: Final Project
@@ -156,7 +157,7 @@ annett_trails <- information_scrapper("https://results.truetimeracing.com/result
 jester_trails <- information_scrapper("https://results.truetimeracing.com/results.aspx?CId=16535&RId=1582")
 ```
 
-Combine into one large data set???
+These will be the base data sets that will later get cleaned and combined to make them easier to work with.
 
 ...
 
@@ -166,16 +167,104 @@ Issues I had, and the solutions I produced:
 
 ### Cleaning the data
 
-Add in additional cleaning data if needed
+Now, using the tables produced, I decided to also create one large data set containing all of the races during the 2025 year. I am deciding to match the large data set with the same number of variables as the Center trails and sugar trails data set, but I am choosing to remove Race No, Finish (same as time), and Pace (which can be manual calculated in a much better format).
 
-...
+Step 1: Ensure all dataframes have the same number/type of variables:
 
+```{r}
+#Center and sugar are good
+
+#Ledges is missing City, State, Pace, Start, Finish
+ledges_trails <- ledges_trails |>
+  mutate(City = "", State = "", Pace = "", Start = "", Finish = "")
+
+#Summer is missing City, State, Pace
+summer_trails <- summer_trails |>
+  mutate(City = "", State = "", Pace = "")
+
+#Yellow trails is missing city, State
+yellow_trails <- yellow_trails |>
+  mutate(City = "", State = "")
+
+#Macbride has extra Age variable
+macbride_trails <- macbride_trails |>
+  select(!c("Age"))
+
+#Annett is missing city, State, Pace
+annett_trails <- annett_trails |>
+  mutate(City = "", State = "", Pace = "")
+
+#Jester is missing city, State
+jester_trails <- jester_trails |>
+  mutate(City = "", State = "")
+```
+
+Step 2: Clean the individual data sets, because I wanted to use another function.
+
+```{r}
+data_cleaner <- function(data, trailName) {
+  #Remove Race No, Pace, Finish
+  dataNew <- data |>
+    select(!c("Race No", "Pace", "Finish"))
+  
+  #Turn gender into a factor
+  dataNew$Gender <- factor(dataNew$Gender)
+  
+  #Turn Pos, Cat Pos, Gen pos, and Dist into a numerical variable
+  dataNew$Pos <- as.numeric(dataNew$Pos)
+  dataNew$`Cat Pos` <- as.numeric(dataNew$`Cat Pos`)
+  dataNew$`Gen Pos` <- as.numeric(dataNew$`Gen Pos`)
+  dataNew$Dist <- as.numeric(dataNew$Dist)
+  
+  #convert time, and start time into the time variable type
+  dataNew$Start <- hms(dataNew$Start)
+  dataNew$Time <- hms(dataNew$Time)
+  
+  #Turn category into a factor
+  dataNew$Category <- factor(dataNew$Category)
+  
+  #Turn city and State into a factor - note may need to change later but whatever
+  dataNew$City <- factor(dataNew$City)
+  dataNew$State <- factor(dataNew$State)
+  
+  #Add on column for the trailName, and set as factor
+  dataNew$Trail <- trailName
+  
+  dataNew$Trail <- factor(dataNew$Trail)
+  
+  return(dataNew)
+}
+```
+
+```{r}
+center_trails <- data_cleaner(center_trails, "Center")
+sugar_trails <- data_cleaner(sugar_trails, "Sugar")
+ledges_trails <- data_cleaner(ledges_trails, "Ledges")
+summer_trails <- data_cleaner(summer_trails, "Summer")
+yellow_trails <- data_cleaner(yellow_trails, "Yellow")
+macbride_trails <- data_cleaner(macbride_trails, "MacBride")
+annett_trails <- data_cleaner(annett_trails, "Annett")
+jester_trails <- data_cleaner(jester_trails, "Jester")
+```
+
+Now, the dataframes will easily combine together into 1
+
+```{r}
+trail_races <- rbind(center_trails, sugar_trails, ledges_trails, summer_trails, yellow_trails, macbride_trails, annett_trails, jester_trails)
+
+#Check the levels of Category, and manually rename to make consistent
+levels(trail_races$Category)
+
+levels(trail_races$Category) <- c("0-14", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "Overall Winners", "15-19", "Unkown", "15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", "70+")
+```
 
 ### Basic summaries
 
 Include basic summaries if needed
 
-...
+```{r}
+summary(trail_races)
+```
 
 ### Research Questions Solutions
 
