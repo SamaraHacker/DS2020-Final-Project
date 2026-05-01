@@ -280,7 +280,104 @@ summary(trail_races)
 
 3)  How does the performance gap between male and female athletes (measured by fastest race times) vary across age categories?
 
-...
+For easier time comparrisons, I made a new column where the time is mutated to be in seconds:
+```{r}
+Q3_df <- trail_races %>%
+  mutate(time_seconds = as.numeric(Time))
+
+Q3_df
+```
+
+Now, I will remove the 0.0 distance:
+```{r}
+Q3_df <- Q3_df %>%
+  filter(!is.na(Dist), Dist != 0.0)
+
+unique(Q3_df$Dist) #Checking it was removed (it was)
+```
+I will also create a new column that removes the category variable "Overall Winners" for simplicity:
+```{r}
+Q3_df <- Q3_df %>%
+  filter(Category != "Overall Winners")
+
+Q3_df # checking it worked
+```
+Because there are inconsistencies in some of the age catergories across race distances, we will only be removing the following age categories:
+0-14, 15-19, 65-69, 70-74, 70+
+```{r}
+Q3_df <- Q3_df %>%
+  filter(!Category %in% c("0-14", "15-19", "65-69", "70-74", "70+"))
+
+unique(Q3_df$Category)
+
+```
+
+I will now find the top 3 runners for each trail, for each distance on the trail, based on gender, and age:
+
+```{r}
+top3_runners <- Q3_df %>%
+  group_by(Trail, Dist, Category, Gender) %>%
+  arrange(time_seconds, .by_group = TRUE) %>%
+  mutate(rank_in_group = row_number()) %>%
+  filter(rank_in_group <= 3)
+
+top3_runners <- top3_runners %>%
+  select(
+    Trail,
+    Dist, 
+    Category,
+    Gender,
+    Name,
+    time_seconds,
+    rank_in_group
+  )
+
+top3_runners
+# Making sure it made a new df instead of altering the original
+trail_races
+```
+
+I am now going to summarize the average times for each age group and gender per race and distance:
+
+```{r}
+gap_run_time <- Q3_df %>%
+  group_by(Trail, Dist, Category, Gender) %>%
+  summarise(
+    avg_time = mean(time_seconds, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+gap_run_time
+```
+From here, I will create a grouped bar-chart to visualize the data:
+```{r}
+#for better labeling
+gap_run_time$Dist_label <- paste0("Dist - ", gap_run_time$Dist)
+
+
+#the actual graph
+ggplot(gap_run_time, aes(x = Category, y = avg_time, fill = Gender)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  
+  scale_fill_manual(values = c("Female" = "pink",
+                               "Male" = "lightblue")) +
+  
+  facet_wrap(~Dist_label) +
+  
+  labs(
+    title = "Performance Gap Between Male and Female Runners",
+    x = "Age Category",
+    y = "Average Time (seconds)"
+  ) +
+  
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold"),
+    legend.position = "top"
+  )
+
+```
 
 4)  Is there significant a relationship between race distance and the number of participants in running events?
 
