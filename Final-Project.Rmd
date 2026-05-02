@@ -280,7 +280,8 @@ summary(trail_races)
 
 3)  How does the performance gap between male and female athletes (measured by fastest race times) vary across age categories?
 
-For easier time comparrisons, I made a new column where the time is mutated to be in seconds:
+For easier time comparisons, I made a new column where the time is mutated to be in seconds:
+
 ```{r}
 Q3_df <- trail_races %>%
   mutate(time_seconds = as.numeric(Time))
@@ -289,21 +290,25 @@ Q3_df
 ```
 
 Now, I will remove the 0.0 distance:
+
 ```{r}
 Q3_df <- Q3_df %>%
   filter(!is.na(Dist), Dist != 0.0)
 
 unique(Q3_df$Dist) #Checking it was removed (it was)
 ```
+
 I will also create a new column that removes the category variable "Overall Winners" for simplicity:
+
 ```{r}
 Q3_df <- Q3_df %>%
   filter(Category != "Overall Winners")
 
 Q3_df # checking it worked
 ```
-Because there are inconsistencies in some of the age catergories across race distances, we will only be removing the following age categories:
-0-14, 15-19, 65-69, 70-74, 70+
+
+Because there are inconsistencies in some of the age catergories across race distances, we will only be removing the following age categories: 0-14, 15-19, 65-69, 70-74, 70+
+
 ```{r}
 Q3_df <- Q3_df %>%
   filter(!Category %in% c("0-14", "15-19", "65-69", "70-74", "70+"))
@@ -349,7 +354,9 @@ gap_run_time <- Q3_df %>%
 
 gap_run_time
 ```
+
 From here, I will create a grouped bar-chart to visualize the data:
+
 ```{r}
 #for better labeling
 gap_run_time$Dist_label <- paste0("Dist - ", gap_run_time$Dist)
@@ -379,6 +386,61 @@ ggplot(gap_run_time, aes(x = Category, y = avg_time, fill = Gender)) +
 
 ```
 
-4)  Is there significant a relationship between race distance and the number of participants in running events?
+Conclusion: from this bar chart we can see that male runners consistently have faster average race distances. The performance gap is present in every subgroup but does vary in magnitude depending age. It tends to be smaller in younger age groups and become varied in older age groups, however female average times increase more notably.
 
-...
+Overall, while gender does have an association with performance differences, the size gap is influenced more by age, and varied across race distances.
+
+4)  Is there a relationship between race distance and the number of participants in running events (does race distance affect number of participants)?
+
+First, I need to find the number of participants at the races, keeping in mind I do not want to count those at 0.0, and keeping them grouped by distance as well:
+
+```{r}
+participants <- trail_races %>%
+  filter(!is.na(Dist), Dist != 0.0) %>%
+  group_by(Trail, Dist) %>%
+  summarise(
+    n_participants = n(),
+    .groups = "drop"
+  )
+
+
+participants
+```
+
+Now that I have all the participant counts, we can visualize the data. I added red man dots to visualize the mean number of runners in each race distance.
+
+```{r}
+ggplot(participants, aes(x = factor(Dist), y = n_participants)) +
+  geom_jitter(width = 0.15, alpha = 0.6, size = 2) +
+  stat_summary(fun = mean, geom = "point", size = 4, color = "red") +
+  labs(
+    title = "Participants by Race Distance",
+    x = "Distance",
+    y = "Number of Participants"
+  ) +
+  theme_minimal()
+```
+
+From here, I am going to use descriptive statistics in order to find if there is evidence that race distance affects number of participants.
+
+```{r}
+participants_summary <- participants %>%
+  group_by(Dist) %>%
+  summarise(
+    mean_participants = mean(n_participants),
+    median_participants = median(n_participants),
+    sd_participants = sd(n_participants),
+    min_participants = min(n_participants),
+    max_participants = max(n_participants),
+    .groups = "drop"
+  )
+
+cor(participants$Dist, participants$n_participants)
+#-0.3384045
+
+participants_summary
+```
+
+Conclusion: From my corr analysis, the number we are given is -0.3384045. This means that as there is a weak to moderate negative relationship between race distance and number of participants. This suggests that shorter races tend to attract more runner, while longer races tend to have fewer participants. However, the relationship is not strong, meaning that distance alone does not majorly affect number of participants. The summary statistics and the scatter plot support this, particularly the scatter plat as there is no sense of linearity in it.
+
+Therefore I have come to the conclusion that there is *not a strong* relationship between race distance and number of participants.
