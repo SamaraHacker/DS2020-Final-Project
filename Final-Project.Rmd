@@ -10,6 +10,12 @@ library(dplyr)
 library(tidyverse)
 library(rvest)
 library(lubridate)
+library(RColorBrewer)
+#install.packages("tidygeocoder")
+library(tidygeocoder)
+
+#install.packages("geosphere")
+library(geosphere)
 ```
 
 # DS2020: Final Project
@@ -68,10 +74,10 @@ information_scrapper <- function(url) {
   }
   
   first_iteration = 1
+  i <- 1
   
   #Iterate through all of the races
   for(race in race_links) {
-    i <- 1
     if(!first_iteration) {
       #Read that specific race page
       url <- paste(base_address, race, sep="")
@@ -98,7 +104,7 @@ information_scrapper <- function(url) {
       #If there is not distance in col names
       if(!("Dist" %in% names(data1))) {
         #Create a new column called distance
-        data1$Dist <- get_distance(race)
+        data1$Dist <- get_distance(race_names[[i]])
       }
       
       #Only rbind with common columns
@@ -255,7 +261,36 @@ trail_races <- rbind(center_trails, sugar_trails, ledges_trails, summer_trails, 
 #Check the levels of Category, and manually rename to make consistent
 levels(trail_races$Category)
 
-levels(trail_races$Category) <- c("0-14", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "Overall Winners", "15-19", "Unkown", "15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", "70+")
+levels(trail_races$Category) <- c("0-14", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "Overall Winners", "15-19", "Unknown", "15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70+", "70+")
+
+#reorder of age groups
+levels(trail_races$Category)
+
+trail_races$Category <- factor(trail_races$Category, levels = c("0-14", "15-19", "20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70+", "Overall Winners", "Unknown"))
+
+levels(trail_races$Category)
+```
+Extra data cleaning that is required for question 1:
+Some of the cities are all caps while some have just the first letter caps, so I will convert these into their corresponding city. There are also a few cities that have some additional flaws to them. I am choosing to do this step by hand instead of creating a new function. It would be ideal for this to be a function, but some of the errors are not predictable.
+
+```{r}
+# Before
+levels(trail_races$City)
+
+# Manual change the levels where needed
+levels(trail_races$City)[levels(trail_races$City) == "AMES"] <- "Ames"
+levels(trail_races$City)[levels(trail_races$City) == "JeffersonJefferson"] <- "Jefferson"
+levels(trail_races$City)[levels(trail_races$City) == "POLK CITY"] <- "Polk City"
+levels(trail_races$City)[levels(trail_races$City) == "Waukeeukee"] <- "Waukee"
+levels(trail_races$City)[levels(trail_races$City) == "CEDAR RAPIDS"] <- "Cedar Rapids"
+levels(trail_races$City)[levels(trail_races$City) == "IOWA CITY"] <- "Iowa City"
+levels(trail_races$City)[levels(trail_races$City) == "Iowa CityI"] <- "Iowa City"
+levels(trail_races$City)[levels(trail_races$City) == "OttumwaOttumwa"] <- "Ottumwa"
+levels(trail_races$City)[levels(trail_races$City) == "WATERLOO"] <- "Waterloo"
+
+
+# After
+levels(trail_races$City)
 ```
 
 ### Basic summaries
@@ -270,13 +305,246 @@ summary(trail_races)
 
 (Questions copied from Final Project Idea)
 
-1)  Which cities/regions are most represented, and do runners from closer locations perform differently than those who travel farther?
+1)  Which cities/states are most represented, and do runners from closer locations perform differently than those who travel farther?
 
-...
+When answering the first part of the question, which cities/states are most represented, a graph that would easily show the most popular cities/states would be a bar chart. In this case, I will plot the top 20 most popular cities first.
+
+```{r}
+# Making a data set a copy of the original for this question, and remove not needed variables
+trail_races_q1 <- trail_races |>
+  select(!c("Name", "Pos", "Cat Pos", "Gen Pos", "Start"))
+
+trail_races_q1 |>
+  filter(!is.na(City), City != "") |>
+  count(City, sort = TRUE) |>
+  slice_head(n = 20) |>
+  mutate(City = reorder(City, n)) |>
+  ggplot(aes(x = n, y = City, fill = factor(n))) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = n), hjust = -0.2, size = 3.2) +
+  labs(title = "Top 20 Cities by Trail Race Participation",
+       x = "Number of participants",
+       y = NULL) +
+  scale_colour_discrete() +
+  theme_bw()
+  
+```
+
+As shown in the graph above, the majority of people are from larger population centers in Iowa, including Iowa City, Cedar Rapids, and Des Moines.
+
+Now I will do the same thing, but for the states instead.
+
+```{r}
+trail_races_q1 |>
+  filter(!is.na(State), State != "") |>
+  count(State, sort = TRUE) |>
+  mutate(State = reorder(State, n)) |>
+  ggplot(aes(x = n, y = State, fill = factor(n))) +
+  geom_col(show.legend = FALSE) +
+  geom_text(aes(label = n), hjust = -0.2, size = 3.2) +
+  labs(title = "States by Trail Race Participation",
+       x = "Number of participants",
+       y = NULL) +
+  scale_colour_discrete() +
+  theme_bw()
+```
+
+As shown in the graph above, it is very obvious that the majority of people are from Iowa, or surrounding areas within the midwest.
+
+Now when answering the second part of the question, we have to first determine a performance factor. In this case, time would not be a good factor because of the different race distances, and instead deriving pace in min/mile, would be an easy way to compare performance between groups. So, I am first going to calculate the pace using the existing Time and Dist variables.
+
+```{r}
+trail_races_q1 <- trail_races_q1 |>
+  mutate(time_sec = as.numeric(Time),
+         pace_min_mile = (time_sec / 60) / Dist)
+```
+
+
+runners from closer locations perform differently than those who travel farther?
+
+```{r}
+#First remove any null city/state values
+trail_races_q1 <- trail_races_q1 |>
+  filter(!is.na(State), State != "", !is.na(City), City != "")
+
+# get the state abbreviation for each State
+trail_races_q1 <- trail_races_q1 |>
+  mutate(State_abbr = state.abb[match(State, state.name)])
+
+# Combine city and state into 1 address
+trail_races_q1 <- trail_races_q1 |>
+  mutate(full_address = paste(City, State_abbr, sep = ", "))
+
+# Get the lat and long from the address
+trail_races_q1 <- trail_races_q1 |>
+  geocode(address = full_address, method = "osm", lat = latitude, long = longitude)
+
+# Now, I'm going to get the location of the races, note: I am manually doing this by looking up the venue locations and the corresponding lat/long. I could also make this a function, but doing it by hand would be easier in this case.
+
+race_locations <- data.frame(
+  Trail = c("Center", "Sugar", "Ledges", "Summer", "Yellow", "MacBride", "Annett", "Jester"),
+  race_latitude = c(41.58687, 41.80723, 41.87665, 42.02676, 43.20060, 41.80723, 41.3605, 41.76110),
+  race_longitude = c(-93.62495, -91.49406, -93.82328, -93.61704, -91.15254, -91.49406, -93.56133, -93.82439)
+)
+
+# Calculate distance from the race location
+
+# Combine race_locations data and the trail_races data
+trail_races_q1 <- trail_races_q1 |>
+  left_join(race_locations, by = "Trail") |>
+  rowwise() |>
+  mutate(dist_to_race_miles = round(distHaversine(c(race_longitude,race_latitude), c(longitude, latitude)) * 0.00062137), 2) |>
+  ungroup()
+```
+```{r}
+# Everyone
+
+trail_races_q1 |>
+  ggplot(aes(x = dist_to_race_miles, y = pace_min_mile)) +
+  geom_point(alpha = 0.3, size = 1.5) +
+  geom_smooth() +
+  scale_colour_brewer(type = "qual", palette = "Set1") +
+  labs(title = "Travel Distance vs. Pace",
+       x = "Distance Travelled to Race (miles)",
+       y = "Pace (min/mile)") +
+  theme_bw()
+
+trail_races_q1 |>
+  filter(dist_to_race_miles <= 500) |>
+  ggplot(aes(x = dist_to_race_miles, y = pace_min_mile)) +
+  geom_point(alpha = 0.3, size = 1.5) +
+  geom_smooth() +
+  scale_colour_brewer(type = "qual", palette = "Set1") +
+  labs(title = "Travel Distance vs. Pace",
+       x = "Distance Travelled to Race (miles)",
+       y = "Pace (min/mile)") +
+  theme_bw()
+```
+Based on gender:
+
+```{r}
+#display the data
+
+trail_races_q1 |>
+  filter(Dist <= 4, dist_to_race_miles <= 500) |>
+  ggplot(aes(x = dist_to_race_miles, y = pace_min_mile, color = Gender)) +
+  geom_point(alpha = 0.3, size = 1.5) +
+  geom_smooth() +
+  scale_colour_brewer(type = "qual", palette = "Set1") +
+  labs(title = "Travel Distance vs. Pace for races 4 miles or less",
+       x = "Distance Travelled to Race (miles)",
+       y = "Pace (min/mile)", color = "Gender") +
+  theme_bw()
+```
+
+```{r}
+trail_races_q1 |>
+  filter(Dist > 4, dist_to_race_miles <= 500) |>
+  ggplot(aes(x = dist_to_race_miles, y = pace_min_mile, color = Gender)) +
+  geom_point(alpha = 0.3, size = 1.5) +
+  geom_smooth() +
+  scale_colour_brewer(type = "qual", palette = "Set1") +
+  labs(title = "Travel Distance vs. Pace for races over 4 miles",
+       x = "Distance Travelled to Race (miles)",
+       y = "Pace (min/mile)", color = "Gender") +
+  theme_bw()
+
+```
+
+
+Based on age category:
+
+```{r}
+#display the data
+trail_races_q1 |>
+  filter(dist_to_race_miles <= 200) |>
+  ggplot(aes(x = dist_to_race_miles, y = pace_min_mile, color = Category)) +
+  geom_point(alpha = 0.2, size = 1.5) +
+  geom_smooth(se = FALSE, method = "loess", span = 0.75) + 
+  labs(title = "Travel Distance vs. Pace",
+       x = "Distance Travelled to Race (miles)",
+       y = "Pace (min/mile)", color = "Age Category") +
+  theme_bw()
+```
 
 2)  How does age group affect pace, and does that relationship change across different race distances?
 
-...
+First I will recalculate pace into a new dataset for question 2, similar to how it was done for question 1. In addition, I will also remove not needed variables.
+
+```{r}
+trail_races_q2 <- trail_races |>
+  mutate(time_sec = as.numeric(Time),
+         pace_min_mile = (time_sec / 60) / Dist) |>
+  select(!c("Name", "Pos", "Cat Pos", "Gen Pos", "Start", "City", "State"))
+```
+
+Next I will filter out the Overall Winners within Category, since their age is not listed, and any unkown values will be excluded
+
+```{r}
+trail_races_q2 <- trail_races_q2 |>
+  filter(!is.na(Category), !Category %in% c("Overall Winners","Unknown"))
+```
+
+Now I will create a basic plot between age group and pace...
+
+```{r fig.height=14, fig.width=10}
+trail_races_q2 |>
+  ggplot(aes(x = Category, y = pace_min_mile, fill = Category)) +
+  geom_boxplot(alpha = 0.65, outlier.alpha = 0.25, outlier.size = 1, show.legend = FALSE) +
+  facet_wrap(~ Dist, scales = "free_y", ncol = 1) +
+  labs(title = "Pace by age group across race distances",
+       x = "Age group",
+       y = "Pace (min/mile)") +
+  theme_bw()
+```
+
+Within the data set, the different distances include 3.1, 3.4, 3.65, 4, 6.2, 6.8, 8, 13.1. I will choose to group these distances into 3 distinctive groups. Those being 3-4 miles, 6-8 miles and then 13.1 miles. I will do this in order to more accuraely comapare short vs mid vs long races. Ill create a new distance_category label that just refactors the original
+
+```{r}
+levels(factor(trail_races_q2$Dist))
+
+trail_races_q2$Dist_category <- factor(trail_races_q2$Dist)
+
+levels(trail_races_q2$Dist_category) <- c("Short (3-4 mi)", "Short (3-4 mi)", "Short (3-4 mi)", "Short (3-4 mi)", "Mid (6-8 mi)", "Mid (6-8 mi)", "Mid (6-8 mi)", "Long (13.1 mi)")
+
+levels(trail_races_q2$Dist_category)
+```
+
+Now I will create a box plot showing the age group vs. pace, faceted by distance
+
+```{r fig.height=10, fig.width=10}
+trail_races_q2 |>
+  ggplot(aes(x = Category, y = pace_min_mile, fill = Category)) +
+  geom_boxplot(alpha = 0.65,outlier.alpha = 0.25,outlier.size = 1, show.legend = FALSE) +
+  facet_wrap(~ Dist_category, scales = "free_y", ncol = 1) +
+  labs(title = "Pace by age group across race distances",
+       x = "Age group",
+       y = "Pace (min/mile)") +
+  theme_bw()
+```
+
+Now to visual a closer represenation of this data, utilizing a heatmap may be good
+
+```{r}
+heatmap <- trail_races_q2 |>
+  group_by(Category, Dist_category) |>
+  summarise(median_pace = median(pace_min_mile, na.rm = TRUE), n = n(), .groups = "drop") |>
+  filter(!is.na(median_pace))
+
+mid_pace <- median(heatmap$median_pace)
+
+heatmap |>
+  ggplot(aes(x = Dist_category, y = Category, fill = median_pace)) +
+  geom_tile(colour= "white") +
+  geom_text(aes(label = sprintf("%d:%02d", floor(median_pace),round((median_pace %% 1) * 60))), size = 3) +
+  scale_fill_gradient2(low = "green",mid = "white",high = "red", midpoint = median(mid_pace), name = "Median pace\n(min/mile)") +
+  labs(title = "Median pace heat map — age group x race distance", 
+       subtitle = "Green = faster, red = slower",
+       x = "Race distance", 
+       y = "Age group") +
+  theme_bw()
+```
+
 
 3)  How does the performance gap between male and female athletes (measured by fastest race times) vary across age categories?
 
@@ -303,10 +571,10 @@ Q3_df <- Q3_df %>%
 Q3_df # checking it worked
 ```
 Because there are inconsistencies in some of the age catergories across race distances, we will only be removing the following age categories:
-0-14, 15-19, 65-69, 70-74, 70+
+0-14, 15-19, 65-69, 70+
 ```{r}
 Q3_df <- Q3_df %>%
-  filter(!Category %in% c("0-14", "15-19", "65-69", "70-74", "70+"))
+  filter(!Category %in% c("0-14", "15-19", "65-69", "70+"))
 
 unique(Q3_df$Category)
 
