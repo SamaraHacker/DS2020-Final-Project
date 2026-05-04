@@ -1,6 +1,6 @@
 ---
-title: "Final-Project"
-output: html_document
+title: "Analyzing Trail Race Participation and Performance Across The Iowa Trail Run Series 2025"
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
@@ -18,15 +18,53 @@ library(tidygeocoder)
 library(geosphere)
 ```
 
-# DS2020: Final Project
-
 Members: Samara Feldhacker (samara28), Alina Kirkpatrick (alinayjk)
 
-### Data Gathering
+# Introduction
 
-In order to gather the data from online resources, I created functions that would take the base url and gather all of the information from the website that was needed. (More text yapping)
+---
 
-Creating functions:
+The Iowa Trail Run Series is a series of trail running events that has taken place over the last several years. Each race is held at a different state park across Iowa, ranging from McFarland Park in Ames to Yellow River State Forest in northeastern Iowa. With the rise in popularity of running over the past few years, trail racing has grown with it. Many people look for specifically trail races because they enjoy the challenge of soft yet technically demanding trails compared to flat road races.
+
+In 2025, the Iowa Trail Run Series featured eight different races with a variety of distance options ranging from a 5K to a half marathon. Participants can sign up for a full season pass granting access to all races, or register for individual events. Many of these runners return year after year, building a tight-knit community around the series.
+
+In addition, the series also includes a points-based competition that runs throughout the year. Runners earn points by placing in the top 5 of the Overall Winners category for their gender, or in the top 3 within their age category. Because of this aspect, this project was motivated in part by personal interest. I (Samara Feldhacker) have signed up for the 2026 Iowa trail Run Series and wanted to better understand the trends among past participants. By analyzing the 2025 race results, we hope to identify patterns in participation and performance that might offer useful insights.
+
+In order to analyse trail race participation and performance, we will also explore the following questions:
+
+1. Which cities/states are most represented, and do runners from closer locations perform differently than those who travel farther?
+2. How does age group affect pace, and does that relationship change across different race distances?
+3. How does the performance gap between male and female athletes (measured by fastest race times) vary across age categories?
+4. Is there significant a relationship between race distance and the number of participants in running events?
+
+# Data
+
+---
+
+## Structure
+
+There are eight datasets that need to be combined, one for each race event offered by the Iowa Trail Run Series in 2025. Race results are published on the True Timer Racing results portal (results.truetimeracing.com), which hosts finisher data for each event as an HTML table. Because the majority of these pages do not offer a downloadable file, the data was collected via web scraping.
+
+The eight race websites scraped were:
+
+- [Center Trails](https://results.truetimeracing.com/results.aspx?CId=16535&RId=1441)
+- [Sugar Bottom Trails](https://results.truetimeracing.com/results.aspx?CId=16535&RId=1446)
+- [Ledges Trails](https://results.truetimeracing.com/results.aspx?CId=16535&RId=1478)
+- [Summer Trails](https://results.truetimeracing.com/results.aspx?CId=16535&RId=1492)
+- [Yellow River Trails](https://results.truetimeracing.com/results.aspx?CId=16535&RId=1575)
+- [MacBride Trails](https://results.truetimeracing.com/results.aspx?CId=16535&RId=1593&EId=2)
+- [Annett Nature Center](https://results.truetimeracing.com/results.aspx?CId=16535&RId=1546&EId=1)
+- [Jester Park Trails](https://results.truetimeracing.com/results.aspx?CId=16535&RId=1582)
+
+Each event website contains multiple pages of participants across multiple race distances, including 5K (3.1 mi), 4-mile, 10K (6.2 mi), 8-mile, and half marathon (13.1 mi) options.
+
+## Variables
+
+The necessary variables that are included within the scraped data are: Pos (position), Name, Time, Category (Age Category), Cat Pos (Category Position), Gender, Gen Pos (Gender Position), City, State, Finish (time), Start (time). Distance and Race Name will also need to be extracted from the website, which allows all of the data to be combined into one large dataset. Additionally, many of these datasets included extra variables or were excluding some needed variables, so these would have to be handled accordingly.
+
+## Data Gathering
+
+Two functions were created to help the scraping process. The first, get_distance() takes the race name (e.g. "Half Marathon" or "5k Run") and returns the distance in miles, since not all event pages included a distance column within the data. The second function, information_scrapper() takes a race URL that is the base page of the race results. Then it will collect all of the race distance links on the page, iterate through each distance, iterate through each of the pages of information, extract a results dataset, and add on the distance column when it is needed. Then it finally returns a single dataframe for that specific event.
 
 ```{r}
 base_address <- "https://results.truetimeracing.com/"
@@ -150,7 +188,7 @@ information_scrapper <- function(url) {
 }
 ```
 
-Now I can use these functions in order to gather the tables from the links:
+Using these functions, the eight race events were scraped individually:
 
 ```{r}
 center_trails <- information_scrapper("https://results.truetimeracing.com/results.aspx?CId=16535&RId=1441")
@@ -163,19 +201,11 @@ annett_trails <- information_scrapper("https://results.truetimeracing.com/result
 jester_trails <- information_scrapper("https://results.truetimeracing.com/results.aspx?CId=16535&RId=1582")
 ```
 
-These will be the base data sets that will later get cleaned and combined to make them easier to work with.
+These eight dataframes will be the base dataframes that will be further cleaned and combined within the next section.
 
-...
+## Cleaning the data
 
-Issues I had, and the solutions I produced:
-
-...
-
-### Cleaning the data
-
-Now, using the tables produced, I decided to also create one large data set containing all of the races during the 2025 year. I am deciding to match the large data set with the same number of variables as the Center trails and sugar trails data set, but I am choosing to remove Race No, Finish (same as time), and Pace (which can be manual calculated in a much better format).
-
-Step 1: Ensure all dataframes have the same number/type of variables:
+Not all of the race websites included the same variables, some missing some variables and others containing extra variables. Because of this, before combining the dataframes, each one would need to be formatted to match the others. To do this, columns would have to either be added or removed.
 
 ```{r}
 #Center and sugar are good
@@ -205,7 +235,7 @@ jester_trails <- jester_trails |>
   mutate(City = "", State = "")
 ```
 
-Step 2: Clean the individual data sets, because I wanted to use another function.
+Now, since all of the dataframes share the same columns, a data_cleaner() function was written to ensure consistent variable types between each of the events. This function takes in the current state of the data and the trailName. Then, the function removes the Race No, Pace, and Finish columns (Since Pace is recalculate when needed in a more useful format, and Finish is a duplicate of Time), and then it ensures that the variables are all of correct types (Either numeric, time, or category), and adds on a Trail label corresponding to the TrailName. The function then returns this updated dataframe.
 
 ```{r}
 data_cleaner <- function(data, trailName) {
@@ -253,7 +283,7 @@ annett_trails <- data_cleaner(annett_trails, "Annett")
 jester_trails <- data_cleaner(jester_trails, "Jester")
 ```
 
-Now, the dataframes will easily combine together into 1
+Now since all of the dataframes are consistent, and are identifiable with the TrailName, they can be combined into a single dataset with rbind(). Additionally, after combing the data, one more cleaning step will need to be completed. This includes making the Category labels consist with eachother and ordering them by age.
 
 ```{r}
 trail_races <- rbind(center_trails, sugar_trails, ledges_trails, summer_trails, yellow_trails, macbride_trails, annett_trails, jester_trails)
@@ -270,8 +300,8 @@ trail_races$Category <- factor(trail_races$Category, levels = c("0-14", "15-19",
 
 levels(trail_races$Category)
 ```
-Extra data cleaning that is required for question 1:
-Some of the cities are all caps while some have just the first letter caps, so I will convert these into their corresponding city. There are also a few cities that have some additional flaws to them. I am choosing to do this step by hand instead of creating a new function. It would be ideal for this to be a function, but some of the errors are not predictable.
+
+Finally, city names require manual correction. Several names appear in all-caps, like AMES, or contained duplication, like Waukeeukee. Because these errors were inconsistent and not easily detectable programmatically, they were corrected by hand.
 
 ```{r}
 # Before
@@ -293,21 +323,36 @@ levels(trail_races$City)[levels(trail_races$City) == "WATERLOO"] <- "Waterloo"
 levels(trail_races$City)
 ```
 
-### Basic summaries
+## Variables
 
-Include basic summaries if needed
+After cleaning and combining all events, the final dataset (trail_races) contains:
+
+- Pos: Overall finishing position
+- Name: Runner's First and Last Name
+- Time: Official finish time (In hours:minutes:seconds)
+- Category: Age Category
+- Cat Pos: Finishing position within age category
+- Gender: The Runner's Gender
+- Gen Pos: Finish position within gender
+- City: Runner's home city
+- State: Runner's home state
+- Start: The start Time of the runner
+- Dist: Race distance in miles
+- Trail: Which race event the data came from
+
+A summary of the dataset is shown below:
 
 ```{r}
 summary(trail_races)
 ```
 
-### Research Questions Solutions
+# Results
 
-(Questions copied from Final Project Idea)
+---
 
-1)  Which cities/states are most represented, and do runners from closer locations perform differently than those who travel farther?
+## Which cities/states are most represented, and do runners from closer locations perform differently than those who travel farther?
 
-When answering the first part of the question, which cities/states are most represented, a graph that would easily show the most popular cities/states would be a bar chart. In this case, I will plot the top 20 most popular cities first.
+When answering the first part of the question, which cities/states are most represented, a bar chart would show the most popular home cities/state from the participants. The top 20 cities are plotted below:
 
 ```{r}
 # Making a data set a copy of the original for this question, and remove not needed variables
@@ -330,9 +375,9 @@ trail_races_q1 |>
   
 ```
 
-As shown in the graph above, the majority of people are from larger population centers in Iowa, including Iowa City, Cedar Rapids, and Des Moines.
+As expected, participation is dominated by larger Iowa population centers, with Iowa City, Cedar Rapids, and Des Moines appearing near the top. This makes sense given their population size and proximity to many of the race locations.
 
-Now I will do the same thing, but for the states instead.
+The same approach was applied to states:
 
 ```{r}
 trail_races_q1 |>
@@ -349,9 +394,9 @@ trail_races_q1 |>
   theme_bw()
 ```
 
-As shown in the graph above, it is very obvious that the majority of people are from Iowa, or surrounding areas within the midwest.
+As shown above, nearly all participants are from Iowa, with small representation from neighboring Midwest states. Since the Race Series is located within Iowa this makes sense and would be expected.
 
-Now when answering the second part of the question, we have to first determine a performance factor. In this case, time would not be a good factor because of the different race distances, and instead deriving pace in min/mile, would be an easy way to compare performance between groups. So, I am first going to calculate the pace using the existing Time and Dist variables.
+Now when answering the second part of the question, whether runners from farther away perform differently, a performance factor would have to be selected. In this case, time would not be a good factor because of the different race distances, and instead deriving pace in min/mile would be an easy way to compare performance between groups. Pace was calculated from the existing `Time` and `Dist` variables:
 
 ```{r}
 trail_races_q1 <- trail_races_q1 |>
@@ -359,8 +404,7 @@ trail_races_q1 <- trail_races_q1 |>
          pace_min_mile = (time_sec / 60) / Dist)
 ```
 
-
-runners from closer locations perform differently than those who travel farther?
+In order to calculate the distance between the race location and the runner's home location, [geocoder](https://cran.r-project.org/web/packages/IRexamples/vignettes/Ex-05-Geocoding-Addresses.html) was used. Geocoder allows for an address to be entered, and the lat/long coordinates would be returned. In this case, the address had to be City, State_Abbr. These were derived for each of the runners. Then, the race location lat/long were manually derived. Finally, the straight line distance from each runner's home to the specific race location was calculate using the Haversine function.
 
 ```{r}
 #First remove any null city/state values
@@ -396,6 +440,9 @@ trail_races_q1 <- trail_races_q1 |>
   mutate(dist_to_race_miles = round(distHaversine(c(race_longitude,race_latitude), c(longitude, latitude)) * 0.00062137), 2) |>
   ungroup()
 ```
+
+The plots below show travel distance vs. pace across all runners, first with no distance filter and then filtered to runners within 500 miles to remove some outliers:
+
 ```{r}
 # Everyone
 
@@ -409,6 +456,7 @@ trail_races_q1 |>
        y = "Pace (min/mile)") +
   theme_bw()
 
+# Within 500 miles
 trail_races_q1 |>
   filter(dist_to_race_miles <= 500) |>
   ggplot(aes(x = dist_to_race_miles, y = pace_min_mile)) +
@@ -420,11 +468,12 @@ trail_races_q1 |>
        y = "Pace (min/mile)") +
   theme_bw()
 ```
-Based on gender:
+
+Within the plots above, there is no strong linear relationship between the travel distance and pace overall. The only thing notable is that the pace starts as faster for those within the city the race is located in, but as the participants get farther away, the pace goes up slightly, but then remains stable for all distances.
+
+Now, breaking the data down by gender reveals something interesting:
 
 ```{r}
-#display the data
-
 trail_races_q1 |>
   filter(Dist <= 4, dist_to_race_miles <= 500) |>
   ggplot(aes(x = dist_to_race_miles, y = pace_min_mile, color = Gender)) +
@@ -451,8 +500,9 @@ trail_races_q1 |>
 
 ```
 
+The slight trend where the pace starts faster for those within the city where the race is at shows up again, but there are some differences between gender. For Females who race less than 4 miles, there is a significant decrease in pace when someone had to travel about 50 miles to get to the race location. The pace then trends up again after 50 miles traveled. While Males of the same distance have the same trend as all genders shown above. Now when it comes to races over 4 miles, it is more obvious that the further someone has traveled there is an increase in pace. Males also have a further dip in pace at around 125 miles, though not as durastic as the Females for distances less than 4 miles.
 
-Based on age category:
+Lastly, splitting by age category shows how pace varies with travel distance within each age group:
 
 ```{r}
 #display the data
@@ -467,9 +517,11 @@ trail_races_q1 |>
   theme_bw()
 ```
 
-2)  How does age group affect pace, and does that relationship change across different race distances?
+Older age groups show slower paces regardless of travel distance. This means that age is a likely a stronger predictor of performance rather than distance traveled.
 
-First I will recalculate pace into a new dataset for question 2, similar to how it was done for question 1. In addition, I will also remove not needed variables.
+## How does age group affect pace, and does that relationship change across different race distances?
+
+First, a new data set was created for this question by recalculating pace and removing variables not needed. Runners categorized as "Overall Winners" or "Unknown" were excluded, since their age is not listed.
 
 ```{r}
 trail_races_q2 <- trail_races |>
@@ -478,27 +530,26 @@ trail_races_q2 <- trail_races |>
   select(!c("Name", "Pos", "Cat Pos", "Gen Pos", "Start", "City", "State"))
 ```
 
-Next I will filter out the Overall Winners within Category, since their age is not listed, and any unkown values will be excluded
-
 ```{r}
 trail_races_q2 <- trail_races_q2 |>
   filter(!is.na(Category), !Category %in% c("Overall Winners","Unknown"))
 ```
 
-Now I will create a basic plot between age group and pace...
+A boxplot of pace by age group gives an initial overview of the relationship:
 
-```{r fig.height=14, fig.width=10}
+```{r}
 trail_races_q2 |>
   ggplot(aes(x = Category, y = pace_min_mile, fill = Category)) +
   geom_boxplot(alpha = 0.65, outlier.alpha = 0.25, outlier.size = 1, show.legend = FALSE) +
-  facet_wrap(~ Dist, scales = "free_y", ncol = 1) +
-  labs(title = "Pace by age group across race distances",
+  labs(title = "Pace by age group",
        x = "Age group",
        y = "Pace (min/mile)") +
   theme_bw()
 ```
 
-Within the data set, the different distances include 3.1, 3.4, 3.65, 4, 6.2, 6.8, 8, 13.1. I will choose to group these distances into 3 distinctive groups. Those being 3-4 miles, 6-8 miles and then 13.1 miles. I will do this in order to more accuraely comapare short vs mid vs long races. Ill create a new distance_category label that just refactors the original
+It is generally shown that younger runners within 15-44 range tend to have slightly faster median paces when compared to the older age groups. There is a general slight trend upwards within all of the age groups.
+
+To see if this pattern holds across different race distances, including 3.1, 3.4, 3.65, 4, 6.2, 6.8, 8, 13.1 miles, these will be group together into 3 distinctive groups. Short (3-4 miles), Mid (6-8 miles), and Long (13.1 miles). This will be done to allow for cleaner comparisons between race types. Here a new distance_category label will be created to signifying which group the race belongs to:
 
 ```{r}
 levels(factor(trail_races_q2$Dist))
@@ -510,7 +561,7 @@ levels(trail_races_q2$Dist_category) <- c("Short (3-4 mi)", "Short (3-4 mi)", "S
 levels(trail_races_q2$Dist_category)
 ```
 
-Now I will create a box plot showing the age group vs. pace, faceted by distance
+The boxplots below show pace by age group, faceted by distance category:
 
 ```{r fig.height=10, fig.width=10}
 trail_races_q2 |>
@@ -523,7 +574,7 @@ trail_races_q2 |>
   theme_bw()
 ```
 
-Now to visual a closer represenation of this data, utilizing a heatmap may be good
+The age-pace relationships still shows up within this boxplot between all three distance categories. But the spread in pace does become longer within the longer distances. An interesting outlier also appears, which is that within the 60-64 age group, there are some fast people who are shown within the half marathon distance. To summarize this data more clearly, a heat map of median pace by age group and distance category is shown below:
 
 ```{r}
 heatmap <- trail_races_q2 |>
@@ -545,8 +596,9 @@ heatmap |>
   theme_bw()
 ```
 
+The heat map makes the relationship between age, pace, and distance much easier to read. The fastest paces are located within the 35-39 age group at the mid distances, and the 15-19 age group at the short distances. The slowest paces are in the older age groups in general and both at the long and short distance categories. An interesting trend that is shown overall is that most of the age groups get faster between the short vs mid distances, and the paces for the long distances are about the same as the short distances. This is likely due to the fact that newer and slower runners are more likely to run those shorter distances, and more experienced runners run at the longer distances. The exception to this trend are those people 0-19, where they become slower as the distance is increased. This is likely due to the fact that younger people mostly train speed in school sports, and they do not focus on endurance runs.
 
-3)  How does the performance gap between male and female athletes (measured by fastest race times) vary across age categories?
+## How does the performance gap between male and female athletes (measured by fastest race times) vary across age categories?
 
 For easier time comparisons, I made a new column where the time is mutated to be in seconds:
 
@@ -574,14 +626,9 @@ Q3_df <- Q3_df %>%
 
 Q3_df # checking it worked
 ```
-<<<<<<< HEAD
-Because there are inconsistencies in some of the age catergories across race distances, we will only be removing the following age categories:
-0-14, 15-19, 65-69, 70+
-=======
 
-Because there are inconsistencies in some of the age catergories across race distances, we will only be removing the following age categories: 0-14, 15-19, 65-69, 70-74, 70+
+Because there are inconsistencies in some of the age catergories across race distances, we will only be removing the following age categories: 0-14, 15-19, 65-69, 70+
 
->>>>>>> 815cb1e4157ab3e7a6b7509f70579561fc5cc376
 ```{r}
 Q3_df <- Q3_df %>%
   filter(!Category %in% c("0-14", "15-19", "65-69", "70+"))
@@ -663,7 +710,7 @@ Conclusion: from this bar chart we can see that male runners consistently have f
 
 Overall, while gender does have an association with performance differences, the size gap is influenced more by age, and varied across race distances.
 
-4)  Is there a relationship between race distance and the number of participants in running events (does race distance affect number of participants)?
+## Is there a relationship between race distance and the number of participants in running events (does race distance affect number of participants)?
 
 First, I need to find the number of participants at the races, keeping in mind I do not want to count those at 0.0, and keeping them grouped by distance as well:
 
@@ -717,3 +764,9 @@ participants_summary
 Conclusion: From my corr analysis, the number we are given is -0.3384045. This means that as there is a weak to moderate negative relationship between race distance and number of participants. This suggests that shorter races tend to attract more runner, while longer races tend to have fewer participants. However, the relationship is not strong, meaning that distance alone does not majorly affect number of participants. The summary statistics and the scatter plot support this, particularly the scatter plat as there is no sense of linearity in it.
 
 Therefore I have come to the conclusion that there is *not a strong* relationship between race distance and number of participants.
+
+# Conclusion
+
+---
+
+From a personal standpoint, the most important thing to consider would be the median paces within the age groups in each race distance category. This is important because I am currently in the 15-19 age category. Since that age group is faster within the 3-4 mile range but slows down at 6+ miles, it may be to my benefit to run the longer distances if they are offered, since I would be more likely to win my age group at these races. But once I enter the 20-24 age group, they have the opposite trend where most people are slower within the shorter distances and faster within the mid and long distances, so then it would be to my advantage to choose to run the shorter distances instead. As long as these trends continue into the 2026 series, this analysis provides a genuinely useful roadmap for race selection and seeing where I fall within my age group.
