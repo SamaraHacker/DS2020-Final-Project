@@ -581,7 +581,7 @@ Because there are inconsistencies in some of the age catergories across race dis
 
 Because there are inconsistencies in some of the age catergories across race distances, we will only be removing the following age categories: 0-14, 15-19, 65-69, 70-74, 70+
 
->>>>>>> 815cb1e4157ab3e7a6b7509f70579561fc5cc376
+
 ```{r}
 Q3_df <- Q3_df %>%
   filter(!Category %in% c("0-14", "15-19", "65-69", "70+"))
